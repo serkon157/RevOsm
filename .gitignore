@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+downloaded_notebook.ipynb
+google_doc_text.txt
