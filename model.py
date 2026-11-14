@@ -300,6 +300,26 @@ def calculate_two_stage(
     }
 
 
+def calculate_analytical_xr2(
+    Xr1: float,
+    Xp1: float = 0.20,
+    Xz1: float = 0.99,
+    Xp2: float = 0.20,
+    Xz2: float = 0.99
+) -> float:
+    """
+    Точний аналітичний розрахунок коефіцієнта рециклу Xr2,
+    за якого концентрація на вході в першу мембрану Cv1 дорівнює солевмісту вихідної води Ci (Cv1 = Ci).
+    Формула отримана з матеріального балансу Змішувача 2 і не залежить від величини Ci чи Gv.
+    """
+    term1 = Xr1 * (1.0 - Xp1) / (Xp1 * (1.0 - Xp2))
+    num = (Xp1 * Xz1) / (1.0 - Xp1)
+    den = 1.0 - (1.0 - Xz1) * (1.0 - Xp2 * (1.0 - Xz2)) / (1.0 - Xp2)
+    if den > 0:
+        return term1 * (num / den)
+    return 0.25
+
+
 def find_optimal_xr2_for_cv_target(
     target_Cv1: float,
     Ci: float = 1500.0,
@@ -316,9 +336,17 @@ def find_optimal_xr2_for_cv_target(
     Метод підбору рециклу другої ступені Xr2 (Goal Seek),
     за якого солевміст води на вході у мембрану першого ступеня Cv1 наближається до target_Cv1 (наприклад, Ci).
     """
+    # Якщо ціль Cv1 == Ci, використовуємо точний аналітичний розрахунок
+    if abs(target_Cv1 - Ci) < 0.01:
+        exact_xr2 = calculate_analytical_xr2(Xr1=Xr1, Xp1=Xp1, Xz1=Xz1, Xp2=Xp2, Xz2=Xz2)
+        if 0.0 <= exact_xr2 <= 1.0:
+            res_exact = calculate_two_stage(Ci, Gv, Xz1, Xp1, Xr1, Xz2, Xp2, Xr2=exact_xr2)
+            return exact_xr2, res_exact
+
     low = 0.0
     high = 0.999
     best_res = calculate_two_stage(Ci, Gv, Xz1, Xp1, Xr1, Xz2, Xp2, Xr2=0.0)
+
 
     res_low = calculate_two_stage(Ci, Gv, Xz1, Xp1, Xr1, Xz2, Xp2, Xr2=low)
     res_high = calculate_two_stage(Ci, Gv, Xz1, Xp1, Xr1, Xz2, Xp2, Xr2=high)
